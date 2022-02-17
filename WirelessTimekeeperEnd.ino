@@ -13,6 +13,8 @@
   #define GDO0_INTERRUPT_PIN 5 // Digital D2 or D3 on the Arduino Nano allow external interrupts only
 #endif
 
+
+#define LED_PIN 13
 #define DEBOUNCE_DELAY 50
 
 // TODO: Change these input button 
@@ -28,7 +30,8 @@ unsigned long lastButtonChangeTime[2] = { 0, 0 };
 unsigned long resultTime[2] = { 0, 0 };
 CC1101 radio;
 
-short readButton(const short btnPin, const size_t btnIdx) {
+// returns boolean if state changed
+void readButton(const short btnPin, const size_t btnIdx) {
    const auto reading = digitalRead(btnPin);
    if (reading != lastButtonState[btnIdx]) {
     lastButtonChangeTime[btnIdx] = millis();
@@ -41,7 +44,15 @@ short readButton(const short btnPin, const size_t btnIdx) {
       buttonState[btnIdx] = reading;
     }
    }
-   return buttonState[btnIdx];
+}
+
+void writeBtnStateAndResult(const short btnPin, const short btnState, unsigned long result) {
+  Serial.print("Button on PIN ");
+  Serial.print(btnPin);
+  Serial.print(" has clicked to state ");
+  Serial.print(btnState);
+  Serial.print(" with end RESULT: ");
+  Serial.println(result);
 }
 
 void setup() {
@@ -53,15 +64,22 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  auto btn1State = readButton(inputBtn1Pin, inputBtn1Idx);
-  auto btn2State = readButton(inputBtn2Pin, inputBtn2Idx);
+  readButton(inputBtn1Pin, inputBtn1Idx);
+  readButton(inputBtn2Pin, inputBtn2Idx);
 
-  if (btn1State == LOW && resultTime[inputBtn1Idx] == 0) {
+ 
+  if (buttonState[inputBtn1Idx] == LOW && resultTime[inputBtn1Idx] == 0) {
     resultTime[inputBtn1Idx] = millis();
+    writeBtnStateAndResult(inputBtn1Pin, buttonState[inputBtn1Idx], resultTime[inputBtn1Idx]);
   }
 
-  if (btn2State == LOW && resultTime[inputBtn2Idx] == 0) {
+  if (buttonState[inputBtn2Idx] == LOW && resultTime[inputBtn2Idx] == 0) {
     resultTime[inputBtn2Idx] = millis();
+    writeBtnStateAndResult(inputBtn2Pin, buttonState[inputBtn2Idx], resultTime[inputBtn2Idx]);
+  }
+
+  if (buttonState[inputBtn1Idx] == LOW && buttonState[inputBtn2Idx] == LOW) {
+    digitalWrite(LED_PIN, HIGH);
   }
 
 }
