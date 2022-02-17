@@ -2,7 +2,7 @@
 
 #define RADIO_CHANNEL             16
 #define THIS_DEVICE_ADDRESS       22
-#define DESINATION_DEVICE_ADDRESS BROADCAST_ADDRESS // Broadcast
+#define DESTINATION_DEVICE_ADDRESS BROADCAST_ADDRESS // Broadcast
 
 
 #ifdef ESP32
@@ -28,7 +28,9 @@ short buttonState[2] = { HIGH, HIGH };
 short lastButtonState[2] = { LOW, LOW };
 unsigned long lastButtonChangeTime[2] = { 0, 0 };
 unsigned long resultTime[2] = { 0, 0 };
+
 CC1101 radio;
+String rec_payload;
 
 // returns boolean if state changed
 void readButton(const short btnPin, const size_t btnIdx) {
@@ -55,11 +57,27 @@ void writeBtnStateAndResult(const short btnPin, const short btnState, unsigned l
   Serial.println(result);
 }
 
+void setupRadio() {
+  Serial.println("Starting radio...");
+                      // freq     bitrate   channel
+  while (!radio.begin(
+    CFREQ_868, KBPS_250, RADIO_CHANNEL, THIS_DEVICE_ADDRESS, GDO0_INTERRUPT_PIN )) {
+      Serial.println(F("Radio initialization failed, trying again in 5 seconds..."));
+      delay(5000);
+    }
+    radio.printCConfigCheck();
+    Serial.println(F("CC1101 radio initialized"));
+    rec_payload.reserve(100);
+    radio.setRxState();
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   pinMode(inputBtn1Pin, INPUT);
   pinMode(inputBtn2Pin, INPUT);
+  delay(100);
+  setupRadio();
 }
 
 void loop() {
