@@ -100,4 +100,15 @@ void loop() {
     digitalWrite(LED_PIN, HIGH);
   }
 
+  //TODO: Add radio communication here, 
+
+  /* 
+    The communication should be like this:
+     1. Discover Start Client acknoledge each other and negotiate time
+     2. Reset button times
+     3. On button times change, send result to Start Client.
+     4. Receive reset signal, then go to step 2, if received shutdown signal, shutdown.
+     
+  */
+
 }
