@@ -32,6 +32,17 @@ unsigned long resultTime[2] = { 0, 0 };
 CC1101 radio;
 String rec_payload;
 
+/*
+ * The communication protocol is very simple, it will be text based with 2 basic command types
+ * A - meaning answer
+ * S - meaning set
+ * 
+ * The message payload will follow right after a command type, delimited with a colon
+ * Some examples:
+ * A:discover - answer for discovery
+ * S:reset - resets timers
+ */
+
 // returns boolean if state changed
 void readButton(const short btnPin, const size_t btnIdx) {
    const auto reading = digitalRead(btnPin);
@@ -71,6 +82,29 @@ void setupRadio() {
     radio.setRxState();
 }
 
+void resetTimers() {
+  resultTime[0] = 0;
+  resultTime[1] = 0;
+}
+
+bool clientDiscovered = false;
+
+void discoverClient() {
+  if (radio.dataAvailable()) {
+    received = String(radio.getChars());
+    if (received.equals("A:discover")) {
+       radio.setTxState();
+       // TODO: send Answer in loop and wait for ACK, something LIKE
+       /*
+        * while (!answered) {
+        *   radio.sendChars();
+        * }
+        */
+    }
+  }
+  
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -100,7 +134,26 @@ void loop() {
     digitalWrite(LED_PIN, HIGH);
   }
 
-  //TODO: Add radio communication here, 
+  //TODO: Add radio communication here,
+
+  if (!clientDiscoverd) {
+    discoverClient();
+    if (clientDiscovered) {
+      resetTimers();
+    }
+  }
+
+  if (resultTime[0] > 0 && resultTime[1] > 0) {
+    sendResults();
+  }
+
+  if (resetSignalReceived()) {
+    resetTimers();
+  }
+
+  if (shutdownSignalReceived()) {
+    shutdown();
+  }
 
   /* 
     The communication should be like this:
