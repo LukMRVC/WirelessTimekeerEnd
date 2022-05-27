@@ -2,8 +2,7 @@
 
 This is the end client of the wireless timekeeper.
 
-It uses an [Easy-IoT-Arduino-CC1101](https://github.com/mrfaptastic/Easy-IoT-Arduino-CC1101/blob/master/examples/Simple_TX_and_RX/Simple_TX_and_RX.ino)
- library by mrfaptastic.
+It uses an [SmartRC-CC1101-Driver-Lib](https://github.com/LSatan/SmartRC-CC1101-Driver-Lib)
+library by LSatan.
 
 Downloading this library is essential for compilation.
-
