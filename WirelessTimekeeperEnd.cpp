@@ -10,7 +10,7 @@
 #define DEBOUNCE_DELAY 50
 
 // TODO: Change these input button
-const short inputBtn1Pin = 4; // change!
+const short inputBtn1Pin = 3; // change!
 const short inputBtn2Pin = 5;
 const size_t inputBtn1Idx = 0;
 const size_t inputBtn2Idx = 1;
@@ -106,9 +106,6 @@ void setup()
 {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  Serial.println("SETTING UP");
-
-  pinMode(inputBtn1Pin, INPUT);
   // pinMode(inputBtn2Pin, INPUT);
   delay(100);
 
@@ -127,18 +124,35 @@ void setup()
   ELECHOUSE_cc1101.setModulation(0); // set modulation mode. 0 = 2-FSK, 1 = GFSK, 2 = ASK/OOK, 3 = 4-FSK, 4 = MSK.
   ELECHOUSE_cc1101.setMHZ(FREQ);     // Here you can set your basic frequency. The lib calculates the frequency automatically (default = 433.92).The cc1101 can: 300-348 MHZ, 387-464MHZ and 779-928MHZ. Read More info from datasheet.
   ELECHOUSE_cc1101.setSyncMode(2);   // Combined sync-word qualifier mode. 0 = No preamble/sync. 1 = 16 sync word bits detected. 2 = 16/16 sync word bits detected. 3 = 30/32 sync word bits detected. 4 = No preamble/sync, carrier-sense above threshold. 5 = 15/16 + carrier-sense above threshold. 6 = 16/16 + carrier-sense above threshold. 7 = 30/32 + carrier-sense above threshold.
-  ELECHOUSE_cc1101.setCrc(1);        // 1 = CRC calculation in TX and CRC check in RX enabled. 0 = CRC disabled for TX and RX.
+
+  ELECHOUSE_cc1101.setCrc(1); // 1 = CRC calculation in TX and CRC check in RX enabled. 0 = CRC disabled for TX and RX.
   ELECHOUSE_cc1101.setChannel(RADIO_CHANNEL);
   ELECHOUSE_cc1101.setAddr(DEVICE_ADDRESS);
-  ELECHOUSE_cc1101.setAdrChk(0);
+  ELECHOUSE_cc1101.setAdrChk(1);
   Serial.println("Rx Mode");
 }
 
-byte buffer[50] = {0};
-bool isTimerRunning = false;
+bool timers_running = 0;
+
+bool is_timer_running(short timer_idx)
+{
+  return (1 << timer_idx) & timers_running == 1;
+}
+
+void set_timer(short timer_idx, bool running)
+{
+  timers_running |= (running ? 1 : 0) << timer_idx;
+}
+
+const short buffer_size = 32;
+char transmission_buffer[buffer_size];
+byte receiving_buffer[buffer_size];
 
 void loop()
 {
+  memset(transmission_buffer, 0, buffer_size);
+  memset(receiving_buffer, 0, buffer_size);
+  *transmission_buffer = DEST_DEVICE_ADDRESS;
   // Checks whether something has been received.
   // When something is received we give some time to receive the message in full.(time in millis)
   if (ELECHOUSE_cc1101.CheckRxFifo(100))
@@ -151,20 +165,15 @@ void loop()
       Serial.print("LQI: ");
       Serial.println(ELECHOUSE_cc1101.getLqi());
 
-      int len = ELECHOUSE_cc1101.ReceiveData(buffer);
-      buffer[len] = '\0';
-      Serial.println((char *)buffer);
-      for (int i = 0; i < len; i++)
-      {
-        Serial.print((char)buffer[i]);
-        Serial.print(",");
-      }
-      Serial.println();
+      int len = ELECHOUSE_cc1101.ReceiveData(receiving_buffer);
+      receiving_buffer[len] = '\0';
+      Serial.println((char *)receiving_buffer + 1);
 
-      if (strcmp((char *)buffer, "ST") == 0)
+      if (strncmp(((char *)receiving_buffer + 1), "START", 5) == 0)
       {
-        Serial.println("Timer is running on end client...");
-        isTimerRunning == true;
+        Serial.println(F("Timers are running"));
+        set_timer(0, true);
+        set_timer(1, true);
       }
     }
     else
@@ -173,58 +182,26 @@ void loop()
     }
   }
 
-  if (readButton(inputBtn1Pin, inputBtn1Idx))
-  {
-    Serial.println("Button 1 changed state");
-  }
-
-  if (isTimerRunning)
+  if (is_timer_running(0) || is_timer_running(1))
   {
     if (readButton(inputBtn1Pin, inputBtn1Idx) && buttonState[inputBtn1Idx] == LOW)
     {
-      memset(buffer, 0, 10);
-      sprintf((char *)buffer, "END");
-      Serial.println("Sending an end signal");
-      ELECHOUSE_cc1101.SendData(buffer, 10);
-      isTimerRunning = false;
+      sprintf((transmission_buffer + 1), "END1");
+      ELECHOUSE_cc1101.SendData(transmission_buffer, buffer_size);
+      Serial.println(F("Timer 1 stopped."));
+      set_timer(0, false);
+    }
+    else if (readButton(inputBtn2Pin, inputBtn2Idx) && buttonState[inputBtn2Idx] == LOW)
+    {
+      sprintf((transmission_buffer + 1), "END2");
+      ELECHOUSE_cc1101.SendData(transmission_buffer, buffer_size);
+      Serial.println(F("Timer 2 stopped."));
+      set_timer(1, false);
     }
   }
 
-  // put your main code here, to run repeatedly:
-  // readButton(inputBtn1Pin, inputBtn1Idx);
-  // readButton(inputBtn2Pin, inputBtn2Idx);
-
-  /*if (buttonState[inputBtn1Idx] == LOW && resultTime[inputBtn1Idx] == 0)
-  {
-    resultTime[inputBtn1Idx] = millis();
-    writeBtnStateAndResult(inputBtn1Pin, buttonState[inputBtn1Idx], resultTime[inputBtn1Idx]);
-  }
-
-  if (buttonState[inputBtn2Idx] == LOW && resultTime[inputBtn2Idx] == 0)
-  {
-    resultTime[inputBtn2Idx] = millis();
-    writeBtnStateAndResult(inputBtn2Pin, buttonState[inputBtn2Idx], resultTime[inputBtn2Idx]);
-  }
-
-  if (buttonState[inputBtn1Idx] == LOW && buttonState[inputBtn2Idx] == LOW)
-  {
-    digitalWrite(LED_PIN, HIGH);
-  }*/
-
-  // TODO: Delete this block after
-  /*if (radio.dataAvailable())
-  {
-    rec_payload = String(radio.getChars());
-    Serial.print('Payload received: ');
-    Serial.println(rec_payload);
-  }
-  else
-  {
-    Serial.println('No payload received');
-  }
-
   // TODO: Add radio communication here,
-
+  /*
   if (!clientDiscovered)
   {
     discoverClient();
@@ -241,7 +218,8 @@ void loop()
 
   if (resetSignalReceived())
   {
-    resetTimers();
+    set_timer(0, false);
+    set_timer(1, false);
   }
 
   // if (shutdownSignalReceived())
